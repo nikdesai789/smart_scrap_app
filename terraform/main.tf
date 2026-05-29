@@ -36,10 +36,12 @@ resource "aws_security_group" "smart_scrap_sg" {
   }
 }
 
+
 # 2. Create the EC2 Virtual Server
 resource "aws_instance" "smart_scrap_server" {
-  ami           = "ami-0c7217cdde317cfec" # Ubuntu 22.04 LTS AMI (Valid for us-east-1)
-  instance_type = "t3.micro"             # Free-tier eligible size
+  ami           = "ami-0c7217cdde317cfec" 
+  instance_type = "t3.micro"             
+  key_name      = "smart-scrap-key"      # <-- ADD THIS LINE
 
   vpc_security_group_ids = [aws_security_group.smart_scrap_sg.id]
 
