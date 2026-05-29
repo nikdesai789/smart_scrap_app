@@ -24,12 +24,20 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
+        
             echo "--- Connected to EC2 Server successfully! ---"
             
-            # 1. Kill any stubborn frontend locks just in case
-            sudo killall apt-get apt 2>/dev/null || true
+            # 1. Forcefully release any background automatic updates locks
+            echo "Clearing out background package locks..."
+            sudo fuser -kk /var/lib/dpkg/lock-frontend 2>/dev/null || true
+            sudo fuser -kk /var/lib/apt/lists/lock 2>/dev/null || true
+            sudo dpkg --configure -a
             
-            # 2. Directly install Docker bypassing general updates
+            # 2. Tell Ubuntu to fetch its available software index
+            echo "Updating package index..."
+            sudo apt-get update -y
+
+            # 3. Install Docker cleanly
             if ! command -v docker &> /dev/null; then
               echo "Installing Docker..."
               sudo apt-get install -y docker.io
@@ -38,30 +46,31 @@ jobs:
               sudo usermod -aG docker ubuntu
             fi
 
-            # 3. Setup clean app directory workspace
+            # 4. Setup workspace directory
             sudo mkdir -p /home/ubuntu/smart_scrap
             sudo chown -R ubuntu:ubuntu /home/ubuntu/smart_scrap
             
             cd /home/ubuntu/smart_scrap
             rm -rf *
 
-            # 4. Download latest repository code bundle
+            # 5. Grab latest repository code bundle
             curl -L https://github.com/${{ github.repository }}/tarball/${{ github.sha }} -o app.tar.gz
             tar -xzf app.tar.gz --strip-components=1
             rm app.tar.gz
 
             echo "--- Code synced. Building Docker container... ---"
             
-            # 5. Destroy old container versions if they exist
+            # 6. Stop and clear any old containers if present
             sudo docker stop production-container 2>/dev/null || true
             sudo docker rm production-container 2>/dev/null || true
 
-            # 6. Build and launch container environment
+            # 7. Build container images and execute live container
             sudo docker build -t smart-scrap-app .
             sudo docker run -d -p 80:8080 --restart always --name production-container smart-scrap-app
             
             echo "--- DEPLOYMENT SUCCESSFUL! ---"
             
-            # --- DIAGNOSTIC LOG CHECK ---
+            # 8. Diagnostics to check running state
+            sleep 3
             sudo docker ps -a
-            sudo docker logs production-container --tail 50
+            sudo docker logs production-container --tail 20
