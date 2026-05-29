@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  # 1. Frontend Web App & PHP Service
+  web:
+    build: .  # Tells Docker to use the Dockerfile in the current directory
+    ports:
+      - "8080:80"  # Maps Port 8080 on your laptop to Port 80 inside the container
+    restart: always
+    depends_on:
+      - db  # Tells Docker to start the database first, then the web app
+    volumes:
+      - .:/var/www/html  # Mounts your local folder so changes you make to PHP files update instantly
+
+  # 2. MariaDB Database Service
+  db:
+    image: mariadb:10.11  # Uses the official MariaDB container image
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_secure_password  # Matches the password in your database.php
+      MYSQL_DATABASE: smart_scrap_db             # Matches the database name in your database.php
+    ports:
+      - "3306:3306"  # Maps Port 3306 on your laptop to Port 3306 inside the container
+    volumes:
+      - mariadb_data:/var/lib/mysql  # Keeps your data safe on your laptop even if the container stops
+
+volumes:
+  mariadb_data:  # Defines the persistent data volume
