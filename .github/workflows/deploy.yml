@@ -24,12 +24,18 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
           script: |
+            
             echo "--- Connected to EC2 Server successfully! ---"
             
-            # Update server packages
+            # 1. Wait for automatic system updates to release the lock
+            echo "Waiting for apt locks to release..."
+            while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 5; done
+            while sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do sleep 5; done
+            
+            # 2. Safely run system updates
             sudo apt-get update -y
             
-            # Install Docker if it doesn't exist
+            # 3. Install Docker if it doesn't exist
             if ! command -v docker &> /dev/null; then
               echo "Installing Docker..."
               sudo apt-get install -y docker.io
@@ -38,28 +44,25 @@ jobs:
               sudo usermod -aG docker ubuntu
             fi
 
-            # Clean out or create our app folder workspace
+            # 4. Create workspace folder
             sudo mkdir -p /home/ubuntu/smart_scrap
             sudo chown -R ubuntu:ubuntu /home/ubuntu/smart_scrap
             
-            # Navigate to workspace
             cd /home/ubuntu/smart_scrap
-
-            # Clear out old files to ensure a clean slate
             rm -rf *
 
-            # Download the latest code bundle directly from this commit
+            # 5. Download your latest repository files
             curl -L https://github.com/${{ github.repository }}/tarball/${{ github.sha }} -o app.tar.gz
             tar -xzf app.tar.gz --strip-components=1
             rm app.tar.gz
 
-            echo "--- Code synced. Building and starting Docker containers... ---"
+            echo "--- Code synced. Building Docker containers... ---"
             
-            # Stop any older running containers to prevent port conflicts
-            sudo docker stop $(sudo docker ps -aq) 2>/dev/null || true
-            sudo docker rm $(sudo docker ps -aq) 2>/dev/null || true
+            # 6. Stop older container runs if they exist
+            sudo docker stop production-container 2>/dev/null || true
+            sudo docker rm production-container 2>/dev/null || true
 
-            # Build and launch your production container
+            # 7. Build and deploy fresh container
             sudo docker build -t smart-scrap-app .
             sudo docker run -d -p 80:8080 --restart always --name production-container smart-scrap-app
             
