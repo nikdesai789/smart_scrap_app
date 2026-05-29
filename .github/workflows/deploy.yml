@@ -1,0 +1,30 @@
+name: CI/CD Smart Scrap Deployment
+
+# 1. Trigger the workflow every time code is pushed to the main branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Build and Deploy to AWS
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 2: Download your repository code into the GitHub runner
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Step 3: Set up AWS credentials using the repository secrets we saved
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # Step 4: Optional test to ensure GitHub can see your live AWS infrastructure
+      - name: Verify Cloud Connection
+        run: |
+          aws ec2 describe-instances --query "Reservations[*].Instances[*].[InstanceId,State.Name]" --output table
