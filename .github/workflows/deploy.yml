@@ -67,8 +67,7 @@ jobs:
 
             # 7. Build container images and execute live container
             sudo docker build -t smart-scrap-app .
-            sudo docker run -d -p 80:8080 --restart always --name production-container smart-scrap-app
-            
+            sudo docker run -d -p 80:80 --restart always --name production-container smart-scrap-app
             echo "--- DEPLOYMENT SUCCESSFUL! ---"
             
             # 8. Diagnostics to check running state
